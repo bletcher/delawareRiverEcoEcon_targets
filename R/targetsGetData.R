@@ -22,7 +22,11 @@ target_getData <-
         tag = tolower(tag),
         enc = 1
       ) %>%
-      addRiverN()
+      addOccN() %>%
+      addKnownZ2() %>%
+      addFirstLast() %>%
+      addRiverN() 
+      
   )  
 
 

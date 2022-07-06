@@ -14,7 +14,8 @@ tar_option_set(
     "lubridate",
     "knitr",
     "targets",
-    "tarchetypes"
+    "tarchetypes",
+    "nimble"
   ), # packages that your targets need to run
   format = "rds" # default storage format
   # Set other options as needed.
@@ -34,5 +35,6 @@ lapply(list.files("R", full.names = TRUE, recursive = TRUE), source)
 list(
   target_getData,
   target_prepareData,
-  target_getEH
+  target_getEH,
+  target_CMR_models_phiT_pT
 )

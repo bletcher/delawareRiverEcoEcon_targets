@@ -6,6 +6,8 @@
   ## general functions 
   #####################################
   `%notin%` <- Negate(`%in%`)
+  
+  
   #####################################
   ## getData functions 
   #####################################
@@ -17,12 +19,51 @@
       mutate(riverN = as.numeric(factor(d$Water, levels = rivers)))
   }
 
-
+  addOccN <- function(d) {
+    dates0 <- sort(unique(d$dateYM))
+    dates <- data.frame(occ = 1:length(dates0), dateYM = dates0)
+    left_join(d, dates)
+  }
+  
+  getKnown <- function(x) {
+    firstObs <- min(which(x == 1))
+    lastObs <- max(which(x == 1))
+    known <- rep(0, length(x))
+    known[firstObs:lastObs] <- 1
+    if (lastObs != length(known)) {
+      known[(lastObs + 1):length(known)] <- NA
+    }
+    return(known)
+  }
+  
+  addKnownZ2 <- function(d) {
+    d %>% 
+      group_by(tag) %>%
+      arrange(occ) %>%
+      mutate(knownZ = getKnown(enc)) %>%
+      ungroup() %>%
+      arrange(tag, occ)
+  }
+  
+  addFirstLast <- function(d){
+    firstLast <- d %>% 
+      group_by(tag) %>%
+      filter(knownZ == 1) %>%
+      summarize(firstObserved = min(occ, na.rm = TRUE),
+                lastObserved = max(occ, na.rm = TRUE)) %>%
+      ungroup()
+    
+    left_join(d, firstLast) %>%
+      mutate(isFirstObserved = occ == firstObserved,
+             isLastObserved = occ == lastObserved)
+  }    
+  
 
   #####################################
-  ## encounter histories 
+  ## Create encounter histories 
   #####################################
-  getNeverCaptured <- function(d){
+  
+   getNeverCaptured <- function(d){
     d %>%
       #filter(ageInSamples > 0 & ageInSamples <= maxOccasionValue) %>%
       #filter(ageInSamples %in% 1:maxOccasionValue) %>%
@@ -30,6 +71,13 @@
       summarize(sumEnc = sum(enc, na.rm = TRUE)) %>%
       filter(sumEnc == 0) %>%
       dplyr::select(tag)
+  }
+  
+  getFirstObservedOnLastOcc <- function(d) {
+    d %>% 
+      filter(firstObserved == max(d$occ)) %>%
+      select(tag) %>%
+      unique()
   }
   
   getGT1ObsPerOcc <- function(d) {
@@ -64,15 +112,14 @@
   getEHDataWide <- function(d, cols, ops, vals, var, valuesFill = 0){
     #print(c("in getEHWide",d))
     
-    dFiltered0 <- d %>%
+    dFiltered <- d %>%
       ehFilter(cols, ops, vals) %>% 
       filter(tag != "", tag != "ad") %>%
       filter(species == "brown trout") %>%
       mutate(dateC = as.character(Date)) 
     
-    dFiltered <- keepOnlyFirstObsPerOcc(dFiltered0)
-    
     dFiltered %>%
+      arrange(occ) %>%
       pivot_wider(
         id_cols = tag,
         names_from = dateYM,
@@ -85,11 +132,12 @@
   
   getEH <- function(d, cols, ops, vals ){
     
-    # Fish with no observed occasions
-    neverCaptured <- getNeverCaptured(d)
     d <- d %>%
-      filter(tag %notin% neverCaptured$tag)
-    
+      filter(tag %notin% getNeverCaptured(d)$tag,             # Fish with no observed occasions
+             tag %notin% getFirstObservedOnLastOcc(d)$tag     # exclude fish caught on the last capture occasion
+             ) %>%
+      keepOnlyFirstObsPerOcc()                               # just the first obs on a given day for fish caught gt 1 time per day
+      
     encWide <- getEHDataWide(d, cols, ops, vals, "enc", valuesFill = 0)
     eh <- as.matrix(encWide %>% dplyr::select(-tag), nrow = nrow(encWide), ncol = ncol(encWide) - 1)
     
@@ -108,8 +156,9 @@
       arrange(tag, date)
     
     first <- apply(eh, 1, function(x) min(which(x != 0)))
-    last <- apply(riverMatrix, 1, function(x) max(which(!is.na(x))))
-    last <- ifelse(last == ncol(riverMatrix), last, last - 1)
+    #last <- apply(riverMatrix, 1, function(x) max(which(!is.na(x))))
+    #last <- ifelse(last == ncol(riverMatrix), last, last - 1)
+    last <- rep(ncol(riverMatrix) - 1, nrow(riverMatrix))
     
     return(list(eh = eh,
                 riverMatrix = riverMatrix,
