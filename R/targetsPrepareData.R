@@ -29,7 +29,7 @@ target_prepareData <-
     toRemove = c(2,4,5,8,9,10,15,18,19,20,21, 12, 17),
     gtOncePerDayToRemove = gtOncePerDay %>% filter(row_number() %in% toRemove),
     
-    # remove gtOncePerDayToRemove fish from d
+    # remove gtOncePerDayToRemove fish from target_d
     target_d = dRaw %>%
       anti_join(gtOncePerDayToRemove)
     ##########################################

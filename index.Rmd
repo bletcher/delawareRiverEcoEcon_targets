@@ -1,0 +1,107 @@
+---
+title: "Delaware River PIT tag data analysis"
+author: "Ben Letcher"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, ecoh = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+
+library(tidyverse)
+library(lubridate)
+library(knitr)
+library(targets)
+library(tarchetypes)
+
+```
+
+This notebook uses [targets](https://books.ropensci.org/targets/) to manage running code. Targets sets up dependencies among specified objects and only re-runs code as necessary. This can save run times for projects with models that take a while to run, like capture-mark-recapture models.  
+
+Data preparation and model running happens using targets and exploration of the data and model runs is below in this Markdown document.  
+
+'knit' the document to update all targets and exploration.  
+
+'tar_make()' runs all the R scripts and functions specified in '_targets.R'. Only updated code or sections that are downstream from updated data are re-run.  
+'tar_read()' reads 'target' data into the global environment.
+```{r}
+tar_make()
+
+d <- tar_read(target_d)
+eh <- tar_read(target_eh)
+#str(d)
+```
+
+
+```{r}
+tar_visnetwork()
+```
+
+Which rivers (Water) riverN corresponds to
+```{r riverN}
+table(d$Water, d$riverN)
+```
+
+### Raw data summary tables
+```{r basic summaries}
+
+kable(data.frame(ftable(d$date)))
+kable(data.frame(ftable(d$Water, d$riverN)))
+kable(data.frame(ftable(d$date)))
+kable(data.frame(ftable(d$Water, d$riverN, d$date)))
+kable(data.frame(ftable(d$species)))
+
+length(unique(d$tag))
+```
+
+Group observations by month.  
+Luckily, sampling periods do not span months, so we can use month as a grouping variable for sampling occasion
+```{r by month}
+kable(data.frame(ftable(d$dateYM)))
+kable(data.frame(ftable(d$Water, d$riverN, d$dateYM)))
+```
+
+### Tag information
+```{r tag information}
+
+tagN <- d %>% 
+  group_by(tag, Water) %>%
+  summarize(n = n()) %>%
+  filter(tag != "") %>%
+  arrange(desc(n))
+
+table(tagN$n)
+(table(tagN$Water, tagN$n))
+
+```
+
+### Basic summary plots of raw data
+```{r basic graphs}
+
+ggplot(d %>% filter(!is.na(species)), aes(Length)) +
+  geom_freqpoly() +
+  facet_grid(species ~ Water)
+
+```
+
+```{r data for TAME}
+
+# dTame <- d %>% 
+#             select(Latitude, Longitude, tag, dateTime, species, Length, Weight) %>%
+#             filter(tag != "", tag != "ad")
+#             
+# write.csv(dTame, './dataOut/dTame.csv', row.names = FALSE)
+
+```
+
+
+
+### Encounter histories
+```{r eh}
+
+str(eh$riverN)
+head(eh$riverN)
+```
+

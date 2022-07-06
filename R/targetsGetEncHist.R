@@ -6,5 +6,5 @@ target_getEH <-
     ops = list("%in%"),
     vals = list("West Br Delaware River"),
     #eh <- getEHDataWide(tar_read(d), cols, ops, vals, date, valuesFill = NA)
-    target_eh = getEH(tar_read(d), cols, ops, vals)
+    target_eh = getEH(tar_read(target_d), cols, ops, vals)
   )

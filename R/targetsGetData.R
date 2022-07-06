@@ -11,13 +11,18 @@ target_getData <-
              Wild, Stage, MarkAppCd, Mark.PreCd, Water, tblSL_SL_ID, Rep, FishNum) %>%
       mutate(
         date = dmy(Date),
+        #year = year(Date),
+        #month = month(Date),
+        dateC = as.character(Date),
+        dateYM = substr(date, 0, 7),
         time = hms(Time),
         dateTime = date + time,
         species = recode(SpeciesCd, "326" = "rainbow trout", "328" = "brown trout", "329" = "brook trout", .default=NA_character_),
         tag = ifelse(MarkAppCd == "", Mark.PreCd, MarkAppCd),
         tag = tolower(tag),
         enc = 1
-      )
+      ) %>%
+      addRiverN()
   )  
 
 
